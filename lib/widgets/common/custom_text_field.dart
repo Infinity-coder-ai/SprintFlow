@@ -77,7 +77,7 @@ class CustomTextField extends StatelessWidget {
             : null,
         suffixIcon: suffixIcon,
         filled: true,
-        fillColor: enabled ? AppColors.background : AppColors.textLight.withOpacity(0.1),
+        fillColor: enabled ? AppColors.background : AppColors.textLight.withValues(alpha: 0.1),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
           borderSide: const BorderSide(color: AppColors.textLight),
@@ -100,7 +100,7 @@ class CustomTextField extends StatelessWidget {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.borderRadius),
-          borderSide: BorderSide(color: AppColors.textLight.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.textLight.withValues(alpha: 0.3)),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

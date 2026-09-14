@@ -340,7 +340,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                   ),
                 ),
                 title: Text(employee.name),
-                subtitle: Text('${taskCount} tasks • ${progress.toInt()}% complete'),
+                subtitle: Text('$taskCount tasks • ${progress.toInt()}% complete'),
                 trailing: Icon(Icons.arrow_forward_ios, color: AppColors.textLight),
                 onTap: () => Navigator.pop(context, employee),
               );
@@ -520,7 +520,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen>
                                     ),
                                   ],
                                 ),
-                              )).toList(),
+                              )),
                             ],
                           ),
                         );

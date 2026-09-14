@@ -453,26 +453,17 @@ class AuthService {
     }
   }
 
-  // Delete user account (only managers can delete their managed users)
+  // Delete a managed user document.
+  // Firebase Auth user deletion should be handled by a trusted backend/admin flow,
+  // not directly from the client app.
   static Future<void> deleteUserAccount(String userId, String managerId) async {
     try {
-      // Check if manager can delete this user
       final canDelete = await canManageUser(managerId, userId);
       if (!canDelete) {
         throw AuthException('You do not have permission to delete this user');
       }
 
-      // Delete user document from Firestore
-      await FirebaseService.firestore
-          .collection(AppConstants.collectionUsers)
-          .doc(userId)
-          .delete();
-
-      // Delete Firebase Auth user
-      final user = _auth.currentUser;
-      if (user != null && user.uid == userId) {
-        await user.delete();
-      }
+      await FirebaseService.deleteUserDocument(userId);
     } catch (e) {
       print('Error deleting user account: $e');
       rethrow;

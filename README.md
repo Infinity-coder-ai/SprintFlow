@@ -1,16 +1,17 @@
-# sprint_flow
+# SprintFlow
 
-A new Flutter project.
+SprintFlow is a Flutter project for managing agile work, projects, tasks, and team updates with role-based dashboards for managers, employees, and clients.
 
-## Getting Started
+## Project structure
 
-This project is a starting point for a Flutter application.
+- `lib/` — application source code
+- `lib/screens/` — screens for auth, dashboard, employees, projects, and tasks
+- `lib/services/` — Firebase and business logic services
+- `lib/models/` — data models
+- `lib/widgets/` — reusable UI widgets
+- `android/`, `ios/` — platform-specific project files
 
-A few resources to get you started if this is your first Flutter project:
+## Notes
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- This project uses Firebase for authentication, Firestore, storage, and messaging.
+- Platform-specific folders for web, Linux, macOS, and Windows were removed to keep the workspace focused on the app’s current needs.

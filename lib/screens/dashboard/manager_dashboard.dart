@@ -2,14 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:lottie/lottie.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/project_service.dart';
 import '../../models/project_model.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../widgets/common/glass_card.dart';
-import '../../widgets/common/custom_button.dart';
 import '../projects/project_form_screen.dart';
 import '../projects/project_detail_screen.dart';
 import '../../services/auth_service.dart';
@@ -196,7 +194,7 @@ class _ManagerDashboardState extends State<ManagerDashboard>
                     child: CircleAvatar(
                       backgroundColor: Colors.white,
                       child: Text(
-                        userData?.name?.substring(0, 1).toUpperCase() ?? 'M',
+                        userData?.name.substring(0, 1).toUpperCase() ?? 'M',
                         style: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -297,7 +295,7 @@ class _ManagerDashboardState extends State<ManagerDashboard>
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
-                                  '${totalProjects} Projects',
+                                  '$totalProjects Projects',
                                   style: TextStyle(
                                     color: AppColors.primary,
                                     fontWeight: FontWeight.w600,

@@ -5,9 +5,8 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';
-import '../../services/task_service.dart';
 import '../../services/firebase_service.dart';
-import '../../services/auth_service.dart';
+import '../../services/task_service.dart';
 import '../../models/user_model.dart';
 
 class TaskFormScreen extends StatefulWidget {
@@ -36,9 +35,7 @@ class _TaskFormScreenState extends State<TaskFormScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_projectId == null) {
-      _projectId = widget.projectId ?? (ModalRoute.of(context)?.settings.arguments as String?);
-    }
+    _projectId ??= widget.projectId ?? (ModalRoute.of(context)?.settings.arguments as String?);
     
     // Pre-fill employee email if assigned
     if (widget.assignedEmployee != null && _assigneeController.text.isEmpty) {

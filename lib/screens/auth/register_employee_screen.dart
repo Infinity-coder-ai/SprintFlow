@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_constants.dart';
-import '../../theme/app_theme.dart';
 import '../../widgets/common/glass_card.dart';
 import '../../widgets/common/custom_button.dart';
 import '../../widgets/common/custom_text_field.dart';

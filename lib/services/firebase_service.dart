@@ -43,32 +43,51 @@ class FirebaseService {
     await auth.signOut();
   }
 
+  // Find the user document across all role collections.
+  static Future<DocumentSnapshot?> findUserDocument(String userId) async {
+    final collections = [
+      AppConstants.collectionManagers,
+      AppConstants.collectionEmployees,
+      AppConstants.collectionClients,
+      AppConstants.collectionUsers,
+    ];
+
+    for (final collection in collections) {
+      final doc = await firestore
+          .collection(collection)
+          .doc(userId)
+          .get();
+
+      if (doc.exists) {
+        return doc;
+      }
+    }
+
+    return null;
+  }
+
   // Get user document from Firestore (searches across all role collections)
   static Future<UserModel?> getUserData(String userId) async {
     try {
-      // Search in all role collections
-      final collections = [
-        AppConstants.collectionManagers,
-        AppConstants.collectionEmployees,
-        AppConstants.collectionClients,
-        AppConstants.collectionUsers, // fallback
-      ];
-      
-      for (final collection in collections) {
-        final doc = await firestore
-            .collection(collection)
-            .doc(userId)
-            .get();
-        
-        if (doc.exists) {
-          return UserModel.fromFirestore(doc);
-        }
-      }
-      return null;
+      final doc = await findUserDocument(userId);
+      if (doc == null) return null;
+
+      return UserModel.fromFirestore(doc);
     } catch (e) {
       print('Error getting user data: $e');
       return null;
     }
+  }
+
+  // Delete a user document from its role-scoped collection.
+  // Auth-user deletion should be handled by a trusted backend/admin flow.
+  static Future<void> deleteUserDocument(String userId) async {
+    final doc = await findUserDocument(userId);
+    if (doc == null) {
+      throw Exception('User not found in any collection');
+    }
+
+    await doc.reference.delete();
   }
 
   // Create user document in role-scoped collection
@@ -133,35 +152,12 @@ class FirebaseService {
   // Update user document (searches across all role collections)
   static Future<void> updateUserDocument(String userId, Map<String, dynamic> data) async {
     try {
-      // Search in all role collections to find the user
-      final collections = [
-        AppConstants.collectionManagers,
-        AppConstants.collectionEmployees,
-        AppConstants.collectionClients,
-        AppConstants.collectionUsers, // fallback
-      ];
-      
-      for (final collection in collections) {
-        try {
-          final doc = await firestore
-              .collection(collection)
-              .doc(userId)
-              .get();
-          
-          if (doc.exists) {
-            // Found the user, update in this collection
-            await firestore
-                .collection(collection)
-                .doc(userId)
-                .update(data);
-            return;
-          }
-        } catch (e) {
-          // Continue to next collection if this one fails
-          print('Error searching collection $collection: $e');
-        }
+      final doc = await findUserDocument(userId);
+      if (doc == null) {
+        throw Exception('User not found in any collection');
       }
-      throw Exception('User not found in any collection');
+
+      await doc.reference.update(data);
     } catch (e) {
       print('Error updating user document: $e');
       rethrow;
@@ -257,37 +253,13 @@ class FirebaseService {
   // Update user online status (searches across all role collections)
   static Future<void> updateOnlineStatus(String userId, bool isOnline) async {
     try {
-      // Search in all role collections to find the user
-      final collections = [
-        AppConstants.collectionManagers,
-        AppConstants.collectionEmployees,
-        AppConstants.collectionClients,
-        AppConstants.collectionUsers, // fallback
-      ];
-      
-      for (final collection in collections) {
-        try {
-          final doc = await firestore
-              .collection(collection)
-              .doc(userId)
-              .get();
-          
-          if (doc.exists) {
-            // Found the user, update in this collection
-            await firestore
-                .collection(collection)
-                .doc(userId)
-                .update({
-              'isOnline': isOnline,
-              'lastLoginAt': FieldValue.serverTimestamp(),
-            });
-            return;
-          }
-        } catch (e) {
-          // Continue to next collection if this one fails
-          print('Error searching collection $collection: $e');
-        }
-      }
+      final doc = await findUserDocument(userId);
+      if (doc == null) return;
+
+      await doc.reference.update({
+        'isOnline': isOnline,
+        'lastLoginAt': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
       print('Error updating online status: $e');
     }
@@ -295,38 +267,19 @@ class FirebaseService {
 
   // Get user's assigned projects (searches across all role collections)
   static Stream<List<String>> getUserProjects(String userId) {
-    // Search in all role collections to find the user
-    final collections = [
-      AppConstants.collectionManagers,
-      AppConstants.collectionEmployees,
-      AppConstants.collectionClients,
-      AppConstants.collectionUsers, // fallback
-    ];
-    
-    // Create a stream that searches all collections
     return Stream.fromFuture(() async {
-      for (final collection in collections) {
-        try {
-          final doc = await firestore
-              .collection(collection)
-              .doc(userId)
-              .get();
-          
-          if (doc.exists) {
-            final user = UserModel.fromFirestore(doc);
-            if (user.isManager) {
-              return user.managedProjects;
-            } else if (user.isEmployee) {
-              return user.assignedProjects;
-            } else if (user.isClient) {
-              return user.clientProjects;
-            }
-          }
-        } catch (e) {
-          // Continue to next collection if this one fails
-          print('Error searching collection $collection: $e');
-        }
+      final doc = await findUserDocument(userId);
+      if (doc == null) return <String>[];
+
+      final user = UserModel.fromFirestore(doc);
+      if (user.isManager) {
+        return user.managedProjects;
+      } else if (user.isEmployee) {
+        return user.assignedProjects;
+      } else if (user.isClient) {
+        return user.clientProjects;
       }
+
       return <String>[];
     }());
   }

@@ -205,7 +205,7 @@ class _EmployeeDashboardState extends State<EmployeeDashboard>
                     child: CircleAvatar(
                       backgroundColor: Colors.white,
                       child: Text(
-                        userData?.name?.substring(0, 1).toUpperCase() ?? 'E',
+                        userData?.name.substring(0, 1).toUpperCase() ?? 'E',
                         style: TextStyle(
                           color: AppColors.primary,
                           fontWeight: FontWeight.bold,
@@ -450,7 +450,7 @@ class _EmployeeDashboardState extends State<EmployeeDashboard>
                     child: _buildProjectTaskSection(projectId, projectTasks),
                   ),
                 );
-              }).toList(),
+              }),
 
               // Bottom padding
               const SliverToBoxAdapter(
@@ -861,7 +861,7 @@ class _EmployeeDashboardState extends State<EmployeeDashboard>
             ...tasks.map((task) => Padding(
               padding: const EdgeInsets.only(bottom: 8.0),
               child: _buildTaskCard(task),
-            )).toList(),
+            )),
           ],
         ),
       ),
