@@ -1,0 +1,275 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isManager() {
+      return isSignedIn() && currentUserDoc().data.role == 'manager';
+    }
+
+    function isEmployee() {
+      return isSignedIn() && currentUserDoc().data.role == 'employee';
+    }
+
+    function isClient() {
+      return isSignedIn() && currentUserDoc().data.role == 'client';
+    }
+
+    function invitationPath(projectId, employeeId) {
+      return /databases/$(database)/documents/project_invitations/$(projectId + '_' + employeeId);
+    }
+
+    function hasProjectInvitation(projectId) {
+      return exists(invitationPath(projectId, request.auth.uid))
+        && get(invitationPath(projectId, request.auth.uid)).data.employeeId == request.auth.uid
+        && get(invitationPath(projectId, request.auth.uid)).data.status in ['pending', 'accepted'];
+    }
+
+    function projectClientMatches(projectData) {
+      return (
+        projectData.clientId == request.auth.uid ||
+        (projectData.clientKeys != null && projectData.clientKeys.hasAny([request.auth.uid])) ||
+        projectData.clientEmail == request.auth.token.email
+      );
+    }
+
+    function projectIncludesEmployee(projectData, projectId) {
+      return (
+        (projectData.assignedEmployees != null && projectData.assignedEmployees.hasAny([request.auth.uid])) ||
+        (currentUserDoc().data.assignedProjects != null && currentUserDoc().data.assignedProjects.hasAny([projectId])) ||
+        hasProjectInvitation(projectId)
+      );
+    }
+
+    function isProjectOwner(projectData) {
+      return isManager() && projectData.managerId == request.auth.uid;
+    }
+
+    function managerProject(projectId) {
+      return get(/databases/$(database)/documents/managers_projects/$(projectId)).data;
+    }
+
+    function taskProjectData(taskData) {
+      return managerProject(taskData.projectId);
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        isSelf(userId) ||
+        isManager()
+      );
+
+      allow create: if isSignedIn() && request.auth.uid == userId;
+
+      allow update: if isSignedIn() && (
+        isSelf(userId) ||
+        isManager()
+      );
+
+      allow delete: if isSignedIn() && isManager();
+    }
+
+    match /pending_users/{userId} {
+      // Signup profiles waiting for email verification. Only the owner
+      // may read, create, or delete their own pending profile, so no
+      // user record is ever created for an unverified address.
+      allow read: if isSelf(userId);
+      allow create: if isSelf(userId);
+      allow delete: if isSelf(userId);
+      allow update: if false;
+    }
+
+    match /project_invitations/{invitationId} {
+      // Managers can read all invitations (they can already list all users,
+      // so this leaks nothing new). The unconditional manager branch also
+      // permits existence checks on not-yet-created invitation docs, whose
+      // null resource would otherwise fail the field comparison below.
+      // Employees can read their own invitations.
+      allow read: if isSignedIn() && (
+        isManager() ||
+        isSelf(resource.data.employeeId)
+      );
+
+      allow create: if isSignedIn() && isManager() && request.resource.data.managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        (isManager() && resource.data.managerId == request.auth.uid) ||
+        (
+          isSelf(resource.data.employeeId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'respondedAt'])
+        )
+      );
+
+      allow delete: if isSignedIn() && isManager() && resource.data.managerId == request.auth.uid;
+    }
+
+    match /managers_projects/{projectId} {
+      allow read: if isSignedIn() && (
+        isProjectOwner(resource.data) ||
+        (isEmployee() && projectIncludesEmployee(resource.data, projectId)) ||
+        (isClient() && projectClientMatches(resource.data))
+      );
+
+      allow create: if isSignedIn() && isManager() && request.resource.data.managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        isProjectOwner(resource.data) ||
+        (
+          isEmployee() &&
+          hasProjectInvitation(projectId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedEmployees', 'updatedAt']) &&
+          request.resource.data.assignedEmployees.hasAny([request.auth.uid]) &&
+          request.resource.data.managerId == resource.data.managerId
+        ) ||
+        (
+          isEmployee() &&
+          projectIncludesEmployee(resource.data, projectId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['managerId', 'clientId', 'clientEmail', 'clientKeys', 'assignedEmployees', 'isArchived', 'isPublic', 'title', 'description', 'expectedFinish', 'startDate', 'createdAt'])
+        )
+      );
+
+      allow delete: if isSignedIn() && isProjectOwner(resource.data);
+    }
+
+    match /clients_projects/{projectId} {
+      allow read: if isSignedIn() && (
+        isProjectOwner(resource.data) ||
+        (isClient() && projectClientMatches(resource.data)) ||
+        (isEmployee() && projectIncludesEmployee(resource.data, projectId))
+      );
+
+      allow create: if isSignedIn() && isManager() && request.resource.data.managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        isProjectOwner(resource.data) ||
+        (
+          isEmployee() &&
+          hasProjectInvitation(projectId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['assignedEmployees', 'updatedAt']) &&
+          request.resource.data.assignedEmployees.hasAny([request.auth.uid]) &&
+          request.resource.data.managerId == resource.data.managerId
+        ) ||
+        (
+          isEmployee() &&
+          projectIncludesEmployee(resource.data, projectId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['managerId', 'clientId', 'clientEmail', 'clientKeys', 'assignedEmployees', 'isArchived', 'isPublic', 'title', 'description', 'expectedFinish', 'startDate', 'createdAt'])
+        )
+      );
+
+      allow delete: if isSignedIn() && isProjectOwner(resource.data);
+    }
+
+    match /managers_tasks/{taskId} {
+      allow read: if isSignedIn() && (
+        (isManager() && taskProjectData(resource.data).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.assignedTo == request.auth.uid) ||
+        (isEmployee() && projectIncludesEmployee(taskProjectData(resource.data), resource.data.projectId)) ||
+        (isClient() && projectClientMatches(taskProjectData(resource.data)))
+      );
+
+      allow create: if isSignedIn() && isManager() &&
+        managerProject(request.resource.data.projectId).managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        (isManager() && taskProjectData(resource.data).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.assignedTo == request.auth.uid)
+      );
+
+      allow delete: if isSignedIn() && isManager() &&
+        taskProjectData(resource.data).managerId == request.auth.uid;
+    }
+
+    match /employees_tasks/{taskId} {
+      allow read: if isSignedIn() && (
+        (isManager() && taskProjectData(resource.data).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.assignedTo == request.auth.uid) ||
+        (isEmployee() && projectIncludesEmployee(taskProjectData(resource.data), resource.data.projectId))
+      );
+
+      allow create: if isSignedIn() && isManager() &&
+        managerProject(request.resource.data.projectId).managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+        (isManager() && taskProjectData(resource.data).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.assignedTo == request.auth.uid)
+      );
+
+      allow delete: if isSignedIn() && isManager() &&
+        taskProjectData(resource.data).managerId == request.auth.uid;
+    }
+
+    match /manager_updates/{updateId} {
+      allow read: if isSignedIn() && (
+        (isManager() && resource.data.managerId == request.auth.uid) ||
+        (
+          isClient() && (
+            resource.data.clientId == request.auth.uid ||
+            resource.data.clientEmail == request.auth.token.email
+          )
+        )
+      );
+
+      allow create: if isSignedIn() && isManager() && request.resource.data.managerId == request.auth.uid;
+
+      allow update: if isSignedIn() && isManager() && resource.data.managerId == request.auth.uid;
+
+      allow delete: if isSignedIn() && isManager() && resource.data.managerId == request.auth.uid;
+    }
+
+    match /work_updates/{updateId} {
+      allow read: if isSignedIn() && (
+        (isManager() && managerProject(resource.data.projectId).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.employeeId == request.auth.uid) ||
+        (
+          isClient() && (
+            resource.data.clientId == request.auth.uid ||
+            resource.data.clientEmail == request.auth.token.email
+          )
+        )
+      );
+
+      allow create: if isSignedIn() && (
+        isManager() ||
+        (isEmployee() && request.resource.data.employeeId == request.auth.uid)
+      );
+
+      allow update: if isSignedIn() && (
+        (isManager() && managerProject(resource.data.projectId).managerId == request.auth.uid) ||
+        (isEmployee() && resource.data.employeeId == request.auth.uid)
+      );
+
+      allow delete: if isSignedIn() && isManager() &&
+        managerProject(resource.data.projectId).managerId == request.auth.uid;
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && isSelf(resource.data.userId);
+
+      allow create: if isSignedIn() && (
+        isManager() ||
+        isSelf(request.resource.data.userId) ||
+        (
+          isEmployee() &&
+          request.resource.data.type == 'project_invitation_response'
+        )
+      );
+
+      allow update: if isSignedIn() && isSelf(resource.data.userId);
+
+      allow delete: if isSignedIn() && (
+        isSelf(resource.data.userId) ||
+        isManager()
+      );
+    }
+  }
+}

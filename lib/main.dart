@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers/auth_provider.dart';
-import 'services/firebase_service.dart';
-import 'theme/app_theme.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_employee_screen.dart';
-import 'screens/dashboard/manager_dashboard.dart';
-import 'screens/dashboard/employee_dashboard.dart';
-import 'screens/dashboard/client_dashboard.dart';
-import 'screens/splash_screen.dart';
-import 'screens/projects/project_form_screen.dart';
-import 'screens/tasks/task_form_screen.dart';
+import 'business_logic/providers/auth_provider.dart';
+import 'database/services/firebase_service.dart';
+import 'core/theme/app_theme.dart';
+import 'ui/auth/login_screen.dart';
+import 'ui/manager/manager_workspace.dart';
+import 'ui/employee/employee_workspace.dart';
+import 'ui/client/client_workspace.dart';
+import 'ui/auth/auth_theme.dart';
+import 'ui/auth/verify_email_screen.dart';
+import 'ui/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,16 +30,26 @@ class SprintFlowApp extends StatelessWidget {
         title: 'SprintFlow',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const AuthWrapper(),
-        routes: {
-          '/login': (context) => const LoginScreen(),
-          '/register-employee': (context) => const RegisterEmployeeScreen(),
-          '/manager-dashboard': (context) => const ManagerDashboard(),
-          '/employee-dashboard': (context) => const EmployeeDashboard(),
-          '/client-dashboard': (context) => const ClientDashboard(),
-          '/projects': (context) => const ProjectFormScreen(),
-          '/tasks': (context) => const TaskFormScreen(),
+        builder: (context, child) {
+          final auth = context.watch<AuthProvider>();
+          if (auth.isManager && child != null) {
+            return ManagerTheme(child: child);
+          }
+          if (auth.isEmployee && child != null) {
+            return EmployeeTheme(child: child);
+          }
+          if (auth.isClient && child != null) {
+            return ClientTheme(child: child);
+          }
+          if (!auth.isManager &&
+              !auth.isEmployee &&
+              !auth.isClient &&
+              child != null) {
+            return AuthTheme(child: child);
+          }
+          return child ?? const SizedBox.shrink();
         },
+        home: const AuthWrapper(),
       ),
     );
   }
@@ -60,18 +69,69 @@ class AuthWrapper extends StatelessWidget {
           return const LoginScreen();
         }
         if (authProvider.userData == null) {
-          // If profile hasn't resolved, send to Login so the user can retry or see errors
-          return const LoginScreen();
+          if (authProvider.hasPendingRegistration) {
+            // Signed up but email not verified yet: no database record
+            // exists, so the user waits here until verification completes.
+            return VerifyEmailScreen(
+              email: authProvider.pendingEmail ?? '',
+            );
+          }
+          // Authenticated but no user document resolved yet.
+          return const _AccountMissingScreen();
+        }
+        if (!authProvider.isEmailVerified) {
+          // Signed in but the email address is not verified yet.
+          // No unverified (possibly mistyped) address can reach a dashboard.
+          return VerifyEmailScreen(email: authProvider.userData!.email);
         }
         if (authProvider.isManager) {
-          return const ManagerDashboard();
+          return const ManagerWorkspace();
         } else if (authProvider.isEmployee) {
-          return const EmployeeDashboard();
+          return const EmployeeWorkspace();
         } else if (authProvider.isClient) {
-          return const ClientDashboard();
+          return const ClientWorkspace();
         }
         return const LoginScreen();
       },
+    );
+  }
+}
+
+class _AccountMissingScreen extends StatelessWidget {
+  const _AccountMissingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('SprintFlow')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.person_off_outlined, size: 64),
+              const SizedBox(height: 16),
+              const Text('Account not fully set up'),
+              const SizedBox(height: 8),
+              Text(
+                'We could not find your profile. Please sign out and sign in again.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              Consumer<AuthProvider>(
+                builder:
+                    (context, authProvider, child) => OutlinedButton.icon(
+                      onPressed:
+                          authProvider.isLoading ? null : authProvider.signOut,
+                      icon: const Icon(Icons.logout),
+                      label: const Text('Sign out'),
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
