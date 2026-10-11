@@ -69,22 +69,51 @@ service cloud.firestore {
         isManager()
       );
 
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Client apps may create only non-privileged self profiles.
+      // Manager accounts must be provisioned by a trusted admin/backend.
+      allow create: if isSelf(userId) &&
+        request.resource.data.role in ['employee', 'client'] &&
+        request.resource.data.email == request.auth.token.email;
 
+      // Users can edit ordinary profile/presence fields only. Managers may
+      // edit a limited set of non-security fields on users' profiles.
+      // Neither path permits changing role or other access-control fields.
       allow update: if isSignedIn() && (
-        isSelf(userId) ||
-        isManager()
+        (
+          isSelf(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name',
+            'avatarUrl',
+            'bio',
+            'phone',
+            'isOnline',
+            'lastLoginAt'
+          ])
+        ) ||
+        (
+          isManager() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name',
+            'avatarUrl',
+            'bio',
+            'phone',
+            'department',
+            'position',
+            'isActive'
+          ])
+        )
       );
 
       allow delete: if isSignedIn() && isManager();
     }
 
     match /pending_users/{userId} {
-      // Signup profiles waiting for email verification. Only the owner
-      // may read, create, or delete their own pending profile, so no
-      // user record is ever created for an unverified address.
+      // Self-registration can create only employee/client pending profiles.
+      // A manager role must come from a trusted admin/backend, not a client.
       allow read: if isSelf(userId);
-      allow create: if isSelf(userId);
+      allow create: if isSelf(userId) &&
+        request.resource.data.role in ['employee', 'client'] &&
+        request.resource.data.email == request.auth.token.email;
       allow delete: if isSelf(userId);
       allow update: if false;
     }
