@@ -81,27 +81,6 @@ class TaskService {
     return doc.id;
   }
 
-  Future<void> updateTask(String taskId, Map<String, dynamic> data) async {
-    data['updatedAt'] = FieldValue.serverTimestamp();
-    await _mgrTasks.doc(taskId).update(data);
-    if (data.containsKey('assignedTo')) {
-      final assignedTo = data['assignedTo'] as String?;
-      try {
-        await _empTasks.doc(taskId).delete();
-      } catch (_) {}
-      if (assignedTo != null && assignedTo.isNotEmpty) {
-        final current = await _mgrTasks.doc(taskId).get();
-        if (current.exists) {
-          await _empTasks.doc(taskId).set(current.data()!);
-        }
-      }
-    } else {
-      try {
-        await _empTasks.doc(taskId).update(data);
-      } catch (_) {}
-    }
-  }
-
   Future<void> completeTask(String taskId) async {
     final payload = {
       'status': AppConstants.statusDone,
@@ -123,12 +102,6 @@ class TaskService {
     try {
       await _empTasks.doc(taskId).update(payload);
     } catch (_) {}
-  }
-
-  Future<TaskModel?> getTask(String taskId) async {
-    final doc = await _mgrTasks.doc(taskId).get();
-    if (!doc.exists) return null;
-    return TaskModel.fromFirestore(doc);
   }
 
   Future<List<TaskModel>> getTasksForProjectAsync(String projectId) async {

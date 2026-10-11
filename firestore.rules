@@ -44,9 +44,11 @@ service cloud.firestore {
     }
 
     function projectIncludesEmployee(projectData, projectId) {
+      // Membership is proven ONLY by the project doc itself or by an
+      // invitation. The user doc's assignedProjects is never consulted,
+      // so stuffing IDs into your own user doc grants nothing.
       return (
         (projectData.assignedEmployees != null && projectData.assignedEmployees.hasAny([request.auth.uid])) ||
-        (currentUserDoc().data.assignedProjects != null && currentUserDoc().data.assignedProjects.hasAny([projectId])) ||
         hasProjectInvitation(projectId)
       );
     }
@@ -72,8 +74,21 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
 
       allow update: if isSignedIn() && (
-        isSelf(userId) ||
-        isManager()
+        (
+          isSelf(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name',
+            'avatarUrl',
+            'bio',
+            'phone',
+            'isOnline',
+            'lastLoginAt',
+            'managedProjects',
+            'updatedAt'
+          ]) &&
+          request.resource.data.role == resource.data.role
+        ) ||
+        (isManager() && resource.data.role != 'manager')
       );
 
       allow delete: if isSignedIn() && isManager();

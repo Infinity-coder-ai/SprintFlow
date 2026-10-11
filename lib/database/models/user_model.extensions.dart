@@ -1,6 +1,6 @@
 part of 'user_model.dart';
 
-/// Serialization, copying, and role helpers for [UserModel].
+/// Serialization, copying, and role checks for [UserModel].
 /// Same library as the model, so every call site keeps working unchanged.
 extension UserModelSerialization on UserModel {
   // Convert to Firestore document
@@ -97,31 +97,4 @@ extension UserModelHelpers on UserModel {
   bool get isManager => role == AppConstants.roleManager;
   bool get isEmployee => role == AppConstants.roleEmployee;
   bool get isClient => role == AppConstants.roleClient;
-
-  // Helper methods for permissions
-  bool canManageProject(String projectId) {
-    if (isManager) {
-      return managedProjects.contains(projectId);
-    }
-    return false;
-  }
-
-  bool canViewProject(String projectId) {
-    if (isManager) {
-      return managedProjects.contains(projectId);
-    } else if (isEmployee) {
-      return assignedProjects.contains(projectId);
-    } else if (isClient) {
-      return clientProjects.contains(projectId);
-    }
-    return false;
-  }
-
-  bool canManageUser(String userId) {
-    if (isManager) {
-      return managedEmployees.contains(userId) ||
-          managedClients.contains(userId);
-    }
-    return false;
-  }
 }

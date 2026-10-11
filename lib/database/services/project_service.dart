@@ -165,40 +165,4 @@ class ProjectService {
     }
   }
 
-  Future<void> archiveProject(String projectId) async {
-    await _mgrProjects.doc(projectId).update({
-      'isArchived': true,
-      'status': AppConstants.projectStatusArchived,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-    await _clientProjects.doc(projectId).update({
-      'isArchived': true,
-      'status': AppConstants.projectStatusArchived,
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> deleteProject(String projectId) async {
-    final taskService = TaskService();
-    await taskService.deleteAllTasksForProject(projectId);
-
-    final workUpdateService = WorkUpdateService();
-    await workUpdateService.deleteWorkUpdatesForProject(projectId);
-    final managerUpdateService = ManagerUpdateService();
-    await managerUpdateService.deleteUpdatesForProject(projectId);
-
-    await Future.wait([
-      _mgrProjects.doc(projectId).delete(),
-      _clientProjects.doc(projectId).delete(),
-    ]);
-  }
-
-  Future<void> assignEmployees(
-    String projectId,
-    List<String> employeeIds,
-  ) async {
-    await updateProject(projectId, {
-      'assignedEmployees': FieldValue.arrayUnion(employeeIds),
-    });
-  }
 }

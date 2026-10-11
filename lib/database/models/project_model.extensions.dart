@@ -1,6 +1,6 @@
 part of 'project_model.dart';
 
-/// Serialization, copying, and derived state for [ProjectModel].
+/// Serialization and copying for [ProjectModel].
 /// Same library as the model, so every call site keeps working unchanged.
 extension ProjectModelSerialization on ProjectModel {
   // Convert to Firestore document
@@ -101,46 +101,5 @@ extension ProjectModelSerialization on ProjectModel {
       analytics: analytics ?? this.analytics,
       tags: tags ?? this.tags,
     );
-  }
-}
-
-extension ProjectModelHelpers on ProjectModel {
-  // Helper methods
-  bool get isDraft => status == AppConstants.projectStatusDraft;
-  bool get isInProgress => status == AppConstants.projectStatusInProgress;
-  bool get isComplete => status == AppConstants.projectStatusComplete;
-  bool get isArchivedStatus => status == AppConstants.projectStatusArchived;
-
-  // Deadline status calculation
-  String get deadlineStatus {
-    if (expectedFinish == null) return AppConstants.deadlineOnTime;
-
-    final now = DateTime.now();
-    final daysUntilDeadline = expectedFinish!.difference(now).inDays;
-
-    if (daysUntilDeadline < 0) {
-      return AppConstants.deadlineLate;
-    } else if (daysUntilDeadline <= 3) {
-      return AppConstants.deadlineOnTime;
-    } else {
-      return AppConstants.deadlineEarly;
-    }
-  }
-
-  // Check if project is overdue
-  bool get isOverdue {
-    if (expectedFinish == null) return false;
-    return DateTime.now().isAfter(expectedFinish!);
-  }
-
-  // Get remaining days
-  int get remainingDays {
-    if (expectedFinish == null) return 0;
-    return expectedFinish!.difference(DateTime.now()).inDays;
-  }
-
-  // Check if project can be viewed by client
-  bool canBeViewedByClient() {
-    return isPublic && !isArchived;
   }
 }

@@ -65,9 +65,9 @@ extension InvitationResponses on ProjectInvitationService {
           .update(payload);
     } catch (_) {}
 
-    await _db.collection(AppConstants.collectionUsers).doc(employeeId).update({
-      'assignedProjects': FieldValue.arrayUnion([projectId]),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+    // NOTE: the employee's own user doc is intentionally NOT touched here.
+    // Membership lives on the project doc + invitation; letting clients
+    // write their own membership list would let anyone grant themselves
+    // read access to any project.
   }
 }

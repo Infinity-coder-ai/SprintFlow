@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../database/models/user_model.dart';
-import '../../database/services/auth_permissions.dart';
 import '../../database/services/auth_registration.dart';
 import '../../database/services/auth_service.dart';
 import '../../database/services/firebase_service.dart';
@@ -178,8 +177,4 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Clear error manually
-  void clearError() {
-    _clearError();
-  }
 }

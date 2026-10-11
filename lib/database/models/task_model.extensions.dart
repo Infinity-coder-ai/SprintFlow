@@ -1,6 +1,6 @@
 part of 'task_model.dart';
 
-/// Serialization, copying, and derived state for [TaskModel].
+/// Serialization and copying for [TaskModel].
 /// Same library as the model, so every call site keeps working unchanged.
 extension TaskModelSerialization on TaskModel {
   // Convert to Firestore document
@@ -89,62 +89,5 @@ extension TaskModelSerialization on TaskModel {
       dependencies: dependencies ?? this.dependencies,
       dependents: dependents ?? this.dependents,
     );
-  }
-}
-
-extension TaskModelHelpers on TaskModel {
-  // Helper methods
-  bool get isTodo => status == AppConstants.statusTodo;
-  bool get isInProgress => status == AppConstants.statusInProgress;
-  bool get isDone => status == AppConstants.statusDone;
-  bool get isOverdue => status == AppConstants.statusOverdue;
-
-  bool get isLowPriority => priority == AppConstants.priorityLow;
-  bool get isMediumPriority => priority == AppConstants.priorityMedium;
-  bool get isHighPriority => priority == AppConstants.priorityHigh;
-  bool get isCriticalPriority => priority == AppConstants.priorityCritical;
-
-  // Check if task is overdue
-  bool get isOverdueTask {
-    if (deadline == null) return false;
-    return DateTime.now().isAfter(deadline!) && !isDone;
-  }
-
-  // Get remaining days
-  int get remainingDays {
-    if (deadline == null) return 0;
-    return deadline!.difference(DateTime.now()).inDays;
-  }
-
-  // Get completed subtasks count
-  int get completedSubtasksCount {
-    return subtasks.where((subtask) => subtask.isCompleted).length;
-  }
-
-  // Get total subtasks count
-  int get totalSubtasksCount {
-    return subtasks.length;
-  }
-
-  // Calculate progress based on subtasks
-  double get calculatedProgress {
-    if (subtasks.isEmpty) return progressPercentage;
-    if (totalSubtasksCount == 0) return 0.0;
-    return (completedSubtasksCount / totalSubtasksCount) * 100.0;
-  }
-
-  // Check if task can be moved to next status
-  bool canMoveToNextStatus() {
-    if (isDone) return false;
-    if (isTodo) return true;
-    if (isInProgress) return true;
-    return false;
-  }
-
-  // Get next status
-  String get nextStatus {
-    if (isTodo) return AppConstants.statusInProgress;
-    if (isInProgress) return AppConstants.statusDone;
-    return status;
   }
 }

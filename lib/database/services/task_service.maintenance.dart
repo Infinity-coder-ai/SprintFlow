@@ -1,6 +1,6 @@
 part of 'task_service.dart';
 
-/// Deletion, cleanup, and aggregate maintenance for tasks.
+/// Aggregate maintenance for tasks: keeps parent project stats in sync.
 extension TaskMaintenance on TaskService {
   Future<void> _recalculateProjectStats(String projectId) async {
     final query =
@@ -43,62 +43,5 @@ extension TaskMaintenance on TaskService {
       'progressPercentage': progressPercentage,
       'status': projectStatus,
     });
-  }
-
-  Future<void> deleteTask(String taskId) async {
-    final snapshot = await _mgrTasks.doc(taskId).get();
-    final Map<String, dynamic>? original = snapshot.data();
-    final String projectId =
-        original != null ? (original['projectId'] ?? '') as String : '';
-    final String? assignedTo =
-        original != null ? original['assignedTo'] as String? : null;
-
-    await Future.wait([
-      _mgrTasks.doc(taskId).delete(),
-      _empTasks.doc(taskId).delete(),
-    ]);
-    await WorkUpdateService().deleteWorkUpdatesForTask(taskId);
-
-    if (projectId.isNotEmpty) {
-      await _recalculateProjectStats(projectId);
-    }
-
-    if (projectId.isNotEmpty && assignedTo != null && assignedTo.isNotEmpty) {
-      final remainingForAssignee =
-          await _mgrTasks
-              .where('projectId', isEqualTo: projectId)
-              .where('assignedTo', isEqualTo: assignedTo)
-              .limit(1)
-              .get();
-      if (remainingForAssignee.docs.isEmpty) {
-        await ProjectService().updateProject(projectId, {
-          'assignedEmployees': FieldValue.arrayRemove([assignedTo]),
-        });
-      }
-    }
-  }
-
-  Future<void> deleteAllTasksForProject(String projectId) async {
-    final tasks = await getTasksForProjectAsync(projectId);
-    for (final task in tasks) {
-      await deleteTask(task.id);
-    }
-  }
-
-  Future<void> unassignEmployeeFromProject(
-    String projectId,
-    String employeeId,
-  ) async {
-    final query =
-        await _mgrTasks
-            .where('projectId', isEqualTo: projectId)
-            .where('assignedTo', isEqualTo: employeeId)
-            .get();
-
-    for (final doc in query.docs) {
-      await updateTask(doc.id, {'assignedTo': null});
-    }
-
-    await _recalculateProjectStats(projectId);
   }
 }

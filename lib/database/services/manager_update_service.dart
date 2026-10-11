@@ -112,15 +112,6 @@ class ManagerUpdateService {
     });
   }
 
-  Stream<List<ManagerUpdateModel>> streamUpdatesForProject(String projectId) {
-    if (projectId.isEmpty) return Stream.value(const <ManagerUpdateModel>[]);
-    return _updates
-        .where('projectId', isEqualTo: projectId)
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snap) => snap.docs.map(ManagerUpdateModel.fromDoc).toList());
-  }
-
   Stream<List<ManagerUpdateModel>> streamUpdatesForProjects(
     List<String> projectIds,
   ) {
@@ -133,14 +124,5 @@ class ManagerUpdateService {
       list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       return list;
     });
-  }
-
-  Future<void> deleteUpdatesForProject(String projectId) async {
-    final batch = _db.batch();
-    final q = await _updates.where('projectId', isEqualTo: projectId).get();
-    for (final d in q.docs) {
-      batch.delete(d.reference);
-    }
-    await batch.commit();
   }
 }

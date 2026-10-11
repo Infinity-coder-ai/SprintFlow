@@ -113,30 +113,6 @@ class AuthService {
     }
   }
 
-  // Get current user data
-  static Future<UserModel?> getCurrentUserData() async {
-    try {
-      final user = _auth.currentUser;
-      if (user != null) {
-        return await FirebaseService.getUserData(user.uid);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Update user profile
-  static Future<void> updateProfile(
-    String userId,
-    Map<String, dynamic> data,
-  ) async {
-    try {
-      await FirebaseService.updateUserDocument(userId, data);
-    } catch (e) {
-      rethrow;
-    }
-  }
 }
 
 // Custom exception for authentication errors
