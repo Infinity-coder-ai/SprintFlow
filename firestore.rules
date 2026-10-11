@@ -72,8 +72,7 @@ service cloud.firestore {
       // Client apps may create only non-privileged self profiles.
       // Manager accounts must be provisioned by a trusted admin/backend.
       allow create: if isSelf(userId) &&
-        request.resource.data.role in ['employee', 'client'] &&
-        request.resource.data.email == request.auth.token.email;
+        request.resource.data.role in ['employee', 'client'];
 
       // Users can edit ordinary profile/presence fields only. Managers may
       // edit a limited set of non-security fields on users' profiles.
@@ -112,8 +111,7 @@ service cloud.firestore {
       // A manager role must come from a trusted admin/backend, not a client.
       allow read: if isSelf(userId);
       allow create: if isSelf(userId) &&
-        request.resource.data.role in ['employee', 'client'] &&
-        request.resource.data.email == request.auth.token.email;
+        request.resource.data.role in ['employee', 'client'];
       allow delete: if isSelf(userId);
       allow update: if false;
     }
